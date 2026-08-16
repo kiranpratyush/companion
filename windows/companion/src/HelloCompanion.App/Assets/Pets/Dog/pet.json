@@ -1,0 +1,67 @@
+{
+  "id": "pixel-corgi",
+  "displayName": "Pixel Corgi",
+  "frames": [
+    "Animations/run/corgi_run_01.png",
+    "Animations/run/corgi_run_02.png",
+    "Animations/run/corgi_run_03.png",
+    "Animations/run/corgi_run_04.png",
+    "Animations/run/corgi_run_05.png",
+    "Animations/run/corgi_run_06.png",
+    "Animations/run/corgi_run_07.png",
+    "Animations/run/corgi_run_08.png"
+  ],
+  "animations": {
+    "roam": [
+      "Animations/run/corgi_run_01.png",
+      "Animations/run/corgi_run_02.png",
+      "Animations/run/corgi_run_03.png",
+      "Animations/run/corgi_run_04.png",
+      "Animations/run/corgi_run_05.png",
+      "Animations/run/corgi_run_06.png",
+      "Animations/run/corgi_run_07.png",
+      "Animations/run/corgi_run_08.png"
+    ],
+    "idle": [
+      "Animations/sleep/corgi_sleep_01.png",
+      "Animations/sleep/corgi_sleep_02.png",
+      "Animations/sleep/corgi_sleep_03.png",
+      "Animations/sleep/corgi_sleep_04.png"
+    ],
+    "sleep": [
+      "Animations/sleep/corgi_sleep_01.png",
+      "Animations/sleep/corgi_sleep_02.png",
+      "Animations/sleep/corgi_sleep_03.png",
+      "Animations/sleep/corgi_sleep_04.png",
+      "Animations/sleep/corgi_sleep_05.png",
+      "Animations/sleep/corgi_sleep_06.png",
+      "Animations/sleep/corgi_sleep_07.png",
+      "Animations/sleep/corgi_sleep_08.png"
+    ],
+    "reminder": ["Animations/sleep/corgi_sleep_01.png"]
+  },
+  "animationFrameDurations": {
+    "roam": 90,
+    "idle": 180,
+    "sleep": 180,
+    "reminder": 500
+  },
+  "nonLoopingAnimations": ["idle", "sleep", "reminder"],
+  "ambientBehaviors": [
+    { "animation": "idle", "weight": 3, "minimumSeconds": 2.5, "maximumSeconds": 5 },
+    { "animation": "sleep", "weight": 1, "minimumSeconds": 6, "maximumSeconds": 10 }
+  ],
+  "reminderBehavior": [
+    { "action": "stop" },
+    { "action": "play", "animation": "reminder" },
+    { "action": "show-message" },
+    { "action": "wait", "seconds": 5 },
+    { "action": "hide-message" },
+    { "action": "resume" }
+  ],
+  "frameDurationMilliseconds": 90,
+  "spriteWidth": 84,
+  "spriteHeight": 84,
+  "speedPixelsPerSecond": 86,
+  "pixelArt": true
+}

@@ -1,0 +1,157 @@
+<Window
+    x:Class="HelloCompanion.App.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Hello Companion">
+    <ScrollViewer>
+        <Grid Padding="32" RowSpacing="24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Spacing="6">
+                <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Hello Companion" />
+                <TextBlock
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Text="A small, friendly hello while you work."
+                    TextWrapping="Wrap" />
+            </StackPanel>
+
+            <Border
+                Grid.Row="1"
+                Padding="20"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Spacing="4">
+                        <TextBlock FontSize="20" FontWeight="SemiBold" Text="{x:Bind StatusTitle, Mode=OneWay}" />
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{x:Bind StatusDetail, Mode=OneWay}"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Click="SayHelloNow_Click" Content="Say hello now" />
+                </Grid>
+            </Border>
+
+            <StackPanel Grid.Row="2" Spacing="16">
+                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Greeting schedule" />
+                <ToggleSwitch
+                    x:Name="GreetingsToggle"
+                    Header="Scheduled greetings"
+                    OffContent="Paused"
+                    OnContent="Enabled" />
+
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="180" />
+                    </Grid.ColumnDefinitions>
+                    <NumberBox
+                        x:Name="IntervalNumberBox"
+                        Header="Every"
+                        Maximum="1440"
+                        Minimum="1"
+                        SmallChange="1"
+                        SpinButtonPlacementMode="Compact" />
+                    <ComboBox
+                        x:Name="IntervalUnitComboBox"
+                        Grid.Column="1"
+                        Header="Unit"
+                        SelectedIndex="0">
+                        <ComboBoxItem Content="Minutes" Tag="Minutes" />
+                        <ComboBoxItem Content="Hours" Tag="Hours" />
+                    </ComboBox>
+                </Grid>
+
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Button Click="Save_Click" Content="Save changes" Style="{StaticResource AccentButtonStyle}" />
+                    <Button Click="PauseResume_Click" Content="{x:Bind PauseResumeLabel, Mode=OneWay}" />
+                </StackPanel>
+            </StackPanel>
+
+            <Border
+                Grid.Row="3"
+                Padding="20"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+                <StackPanel Spacing="16">
+                    <StackPanel Spacing="4">
+                        <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Desktop pets" />
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="Transparent, click-through characters that never steal focus from your work."
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <ToggleSwitch
+                        x:Name="DesktopPetsToggle"
+                        Header="Show desktop pets"
+                        OffContent="Hidden"
+                        OnContent="Visible" />
+
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="220" />
+                        </Grid.ColumnDefinitions>
+                        <NumberBox
+                            x:Name="PetCountNumberBox"
+                            Header="Number of pets"
+                            Maximum="5"
+                            Minimum="1"
+                            SmallChange="1"
+                            SpinButtonPlacementMode="Compact" />
+                        <ComboBox
+                            x:Name="PetMovementAreaComboBox"
+                            Grid.Column="1"
+                            Header="Movement area"
+                            SelectedIndex="0">
+                            <ComboBoxItem Content="Along the taskbar" Tag="Taskbar" />
+                            <ComboBoxItem Content="Across the full screen" Tag="FullScreen" />
+                        </ComboBox>
+                    </Grid>
+
+                    <TextBlock
+                        x:Name="LoadedPetsText"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextWrapping="Wrap" />
+
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Click="SavePets_Click" Content="Apply pets" Style="{StaticResource AccentButtonStyle}" />
+                        <Button Click="OpenPetsFolder_Click" Content="Open custom pets folder" />
+                        <Button Click="ReloadPets_Click" Content="Reload characters" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <StackPanel Grid.Row="4" Spacing="12">
+                <InfoBar
+                    x:Name="StatusInfoBar"
+                    IsClosable="False"
+                    IsOpen="False"
+                    Severity="Error" />
+                <TextBlock
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Text="Closing this window keeps Hello Companion running in the notification area. Use Exit below or the tray menu to stop it completely."
+                    TextWrapping="Wrap" />
+                <Button
+                    HorizontalAlignment="Left"
+                    Click="Exit_Click"
+                    Content="Exit Hello Companion" />
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</Window>

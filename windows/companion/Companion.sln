@@ -1,0 +1,45 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.9.12105.275 stable
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Companion", "src\HelloCompanion.App\Companion.csproj", "{7EA0B7B7-57B5-4E9E-A5C7-C0D4E0EDC75F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|ARM64 = Debug|ARM64
+		Debug|x64 = Debug|x64
+		Release|Any CPU = Release|Any CPU
+		Release|ARM64 = Release|ARM64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7EA0B7B7-57B5-4E9E-A5C7-C0D4E0EDC75F}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{7EA0B7B7-57B5-4E9E-A5C7-C0D4E0EDC75F}.Debug|Any CPU.Build.0 = Debug|x64
+		{7EA0B7B7-57B5-4E9E-A5C7-C0D4E0EDC75F}.Debug|Any CPU.Deploy.0 = Debug|x64
+		{7EA0B7B7-57B5-4E9E-A5C7-C0D4E0EDC75F}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{7EA0B7B7-57B5-4E9E-A5C7-C0D4E0EDC75F}.Debug|ARM64.Build.0 = Debug|ARM64
+		{7EA0B7B7-57B5-4E9E-A5C7-C0D4E0EDC75F}.Debug|ARM64.Deploy.0 = Debug|ARM64
+		{7EA0B7B7-57B5-4E9E-A5C7-C0D4E0EDC75F}.Debug|x64.ActiveCfg = Debug|x64
+		{7EA0B7B7-57B5-4E9E-A5C7-C0D4E0EDC75F}.Debug|x64.Build.0 = Debug|x64
+		{7EA0B7B7-57B5-4E9E-A5C7-C0D4E0EDC75F}.Debug|x64.Deploy.0 = Debug|x64
+		{7EA0B7B7-57B5-4E9E-A5C7-C0D4E0EDC75F}.Release|Any CPU.ActiveCfg = Release|x64
+		{7EA0B7B7-57B5-4E9E-A5C7-C0D4E0EDC75F}.Release|Any CPU.Build.0 = Release|x64
+		{7EA0B7B7-57B5-4E9E-A5C7-C0D4E0EDC75F}.Release|Any CPU.Deploy.0 = Release|x64
+		{7EA0B7B7-57B5-4E9E-A5C7-C0D4E0EDC75F}.Release|ARM64.ActiveCfg = Release|ARM64
+		{7EA0B7B7-57B5-4E9E-A5C7-C0D4E0EDC75F}.Release|ARM64.Build.0 = Release|ARM64
+		{7EA0B7B7-57B5-4E9E-A5C7-C0D4E0EDC75F}.Release|ARM64.Deploy.0 = Release|ARM64
+		{7EA0B7B7-57B5-4E9E-A5C7-C0D4E0EDC75F}.Release|x64.ActiveCfg = Release|x64
+		{7EA0B7B7-57B5-4E9E-A5C7-C0D4E0EDC75F}.Release|x64.Build.0 = Release|x64
+		{7EA0B7B7-57B5-4E9E-A5C7-C0D4E0EDC75F}.Release|x64.Deploy.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{7EA0B7B7-57B5-4E9E-A5C7-C0D4E0EDC75F} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+	EndGlobalSection
+EndGlobal
