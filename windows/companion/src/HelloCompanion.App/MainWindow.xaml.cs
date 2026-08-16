@@ -13,9 +13,8 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private readonly CompanionRuntime _runtime;
     private readonly AppWindow _appWindow;
     private bool _allowClose;
-    private string _statusTitle = "Greetings are on";
+    private string _statusTitle = "Your pets are active";
     private string _statusDetail = string.Empty;
-    private string _pauseResumeLabel = "Pause greetings";
 
     public MainWindow(CompanionRuntime runtime)
     {
@@ -50,12 +49,6 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         private set => SetField(ref _statusDetail, value);
     }
 
-    public string PauseResumeLabel
-    {
-        get => _pauseResumeLabel;
-        private set => SetField(ref _pauseResumeLabel, value);
-    }
-
     public void ShowAndActivate()
     {
         _appWindow.Show();
@@ -77,71 +70,99 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
-    private void Runtime_StateChanged(object? sender, EventArgs e) => DispatcherQueue.TryEnqueue(RefreshStatus);
+    private void Runtime_StateChanged(object? sender, EventArgs e) => DispatcherQueue.TryEnqueue(() =>
+    {
+        LoadSettingsIntoControls();
+        RefreshStatus();
+    });
 
     private void LoadSettingsIntoControls()
     {
         CompanionSettings settings = _runtime.Settings;
-        GreetingsToggle.IsOn = settings.GreetingsEnabled;
         DesktopPetsToggle.IsOn = settings.DesktopPetsEnabled;
-        PetCountNumberBox.Value = settings.DesktopPetCount;
         PetMovementAreaComboBox.SelectedIndex = settings.DesktopPetMovementArea == "FullScreen" ? 1 : 0;
+        SleepModeToggle.IsOn = settings.SleepModeEnabled;
 
-        if (settings.GreetingIntervalMinutes >= 60 && settings.GreetingIntervalMinutes % 60 == 0)
+        AvailablePetsList.ItemsSource = _runtime.AvailablePets;
+        AvailablePetsList.SelectedItems.Clear();
+        HashSet<string> selectedIds = new(_runtime.SelectedPetIds, StringComparer.OrdinalIgnoreCase);
+        foreach (PetSelectionOption pet in _runtime.AvailablePets)
         {
-            IntervalNumberBox.Value = settings.GreetingIntervalMinutes / 60d;
-            IntervalUnitComboBox.SelectedIndex = 1;
+            if (selectedIds.Contains(pet.Id))
+            {
+                AvailablePetsList.SelectedItems.Add(pet);
+            }
         }
-        else
+
+        AvailableAnimationsList.ItemsSource = _runtime.AvailableAmbientAnimations;
+        AvailableAnimationsList.SelectedItems.Clear();
+        HashSet<string>? enabledAnimations = settings.EnabledAmbientAnimations is null
+            ? null
+            : new HashSet<string>(settings.EnabledAmbientAnimations, StringComparer.OrdinalIgnoreCase);
+        foreach (AnimationSelectionOption animation in _runtime.AvailableAmbientAnimations)
         {
-            IntervalNumberBox.Value = settings.GreetingIntervalMinutes;
-            IntervalUnitComboBox.SelectedIndex = 0;
+            bool selected = string.Equals(animation.Name, "roam", StringComparison.OrdinalIgnoreCase)
+                ? settings.RoamingEnabled
+                : enabledAnimations is null || enabledAnimations.Contains(animation.Name);
+            if (selected)
+            {
+                AvailableAnimationsList.SelectedItems.Add(animation);
+            }
         }
     }
 
     private void RefreshStatus()
     {
-        bool enabled = _runtime.Settings.GreetingsEnabled;
-        StatusTitle = enabled ? "Greetings are on" : "Greetings are paused";
-        PauseResumeLabel = enabled ? "Pause greetings" : "Resume greetings";
-        StatusDetail = enabled && _runtime.NextGreetingAt is DateTimeOffset nextGreeting
-            ? $"Next hello at {nextGreeting:hh:mm tt}."
-            : "No greeting is currently scheduled.";
+        bool enabled = _runtime.Settings.DesktopPetsEnabled;
+        if (!enabled)
+        {
+            StatusTitle = "Your pets are hidden";
+            StatusDetail = "Turn on desktop pets below to see them again.";
+        }
+        else if (_runtime.IsSleepModeEnabled)
+        {
+            StatusTitle = "Your pets are sleeping";
+            StatusDetail = "Turn off sleep mode when you want them to roam again.";
+        }
+        else
+        {
+            StatusTitle = "Your pets are active";
+            StatusDetail = _runtime.Settings.RoamingEnabled
+                ? "They will speak occasionally while roaming and when they feel sleepy."
+                : "Roaming is off, so they will stay in place and use only the selected behaviors.";
+        }
         StatusInfoBar.Message = _runtime.LastError ?? string.Empty;
         StatusInfoBar.IsOpen = !string.IsNullOrWhiteSpace(_runtime.LastError);
         LoadedPetsText.Text = $"Loaded characters: {_runtime.AvailablePetsSummary}";
     }
 
-    private async void Save_Click(object sender, RoutedEventArgs e)
-    {
-        await _runtime.ApplyAsync(GreetingsToggle.IsOn, GetIntervalMinutes());
-        LoadSettingsIntoControls();
-        RefreshStatus();
-    }
-
-    private async void PauseResume_Click(object sender, RoutedEventArgs e)
-    {
-        await _runtime.TogglePauseAsync();
-        LoadSettingsIntoControls();
-        RefreshStatus();
-    }
-
-    private async void SayHelloNow_Click(object sender, RoutedEventArgs e)
-    {
-        await _runtime.SayHelloNowAsync();
-        RefreshStatus();
-    }
-
     private async void SavePets_Click(object sender, RoutedEventArgs e)
     {
-        int petCount = double.IsNaN(PetCountNumberBox.Value)
-            ? 1
-            : Math.Clamp((int)Math.Round(PetCountNumberBox.Value), 1, 5);
         string movementArea = PetMovementAreaComboBox.SelectedItem is ComboBoxItem item
             ? item.Tag?.ToString() ?? "Taskbar"
             : "Taskbar";
+        string[] selectedPetIds = AvailablePetsList.SelectedItems
+            .OfType<PetSelectionOption>()
+            .Select(pet => pet.Id)
+            .Take(5)
+            .ToArray();
+        string[] enabledBehaviors = AvailableAnimationsList.SelectedItems
+            .OfType<AnimationSelectionOption>()
+            .Select(animation => animation.Name)
+            .ToArray();
+        bool roamingEnabled = enabledBehaviors.Contains("roam", StringComparer.OrdinalIgnoreCase);
+        string[] enabledAmbientAnimations = enabledBehaviors
+            .Where(name => !string.Equals(name, "roam", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
 
-        await _runtime.ApplyPetsAsync(DesktopPetsToggle.IsOn, petCount, movementArea);
+        await _runtime.ApplyPetsAsync(
+            DesktopPetsToggle.IsOn && selectedPetIds.Length > 0,
+            Math.Max(1, selectedPetIds.Length),
+            movementArea,
+            SleepModeToggle.IsOn,
+            selectedPetIds,
+            enabledAmbientAnimations,
+            roamingEnabled);
         LoadSettingsIntoControls();
         RefreshStatus();
     }
@@ -154,20 +175,11 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private void ReloadPets_Click(object sender, RoutedEventArgs e)
     {
         _runtime.ReloadPets();
+        LoadSettingsIntoControls();
         RefreshStatus();
     }
 
     private void Exit_Click(object sender, RoutedEventArgs e) => ExitRequested?.Invoke(this, EventArgs.Empty);
-
-    private int GetIntervalMinutes()
-    {
-        double value = double.IsNaN(IntervalNumberBox.Value) ? 1 : IntervalNumberBox.Value;
-        bool hours = IntervalUnitComboBox.SelectedItem is ComboBoxItem item &&
-                     string.Equals(item.Tag?.ToString(), "Hours", StringComparison.Ordinal);
-        return Math.Clamp((int)Math.Round(hours ? value * 60 : value),
-            CompanionSettings.MinimumIntervalMinutes,
-            CompanionSettings.MaximumIntervalMinutes);
-    }
 
     private void SetField(ref string field, string value, [CallerMemberName] string? propertyName = null)
     {

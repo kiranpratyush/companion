@@ -10,17 +10,23 @@ public sealed class DesktopPetManager : IDisposable
     private readonly PetCatalog _catalog;
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly DispatcherQueueTimer _animationTimer;
+    private readonly IPetMessageProvider _messageProvider;
     private readonly List<IPetActor> _pets = [];
     private readonly SemaphoreSlim _reminderGate = new(1, 1);
     private CancellationTokenSource _petCancellation = new();
     private long _lastTick;
     private int _nextReminderPet;
+    private bool _sleepModeEnabled;
     private bool _disposed;
 
-    public DesktopPetManager(PetCatalog catalog, DispatcherQueue dispatcherQueue)
+    public DesktopPetManager(
+        PetCatalog catalog,
+        DispatcherQueue dispatcherQueue,
+        IPetMessageProvider? messageProvider = null)
     {
         _catalog = catalog;
         _dispatcherQueue = dispatcherQueue;
+        _messageProvider = messageProvider ?? new LocalPetMessageProvider();
         _animationTimer = dispatcherQueue.CreateTimer();
         _animationTimer.Interval = TimeSpan.FromMilliseconds(33);
         _animationTimer.IsRepeating = true;
@@ -33,14 +39,58 @@ public sealed class DesktopPetManager : IDisposable
 
     public IReadOnlyList<string> AvailablePetNames { get; private set; } = [];
 
+    public IReadOnlyList<PetSelectionOption> AvailablePets { get; private set; } = [];
+
+    public IReadOnlyList<string> SelectedPetIds { get; private set; } = [];
+
+    public IReadOnlyList<AnimationSelectionOption> AvailableAmbientAnimations { get; private set; } = [];
+
     public string CustomPetsDirectory => _catalog.CustomPetsDirectory;
 
-    public void Apply(bool enabled, int petCount, string movementArea)
+    public bool IsSleepModeEnabled => _sleepModeEnabled;
+
+    public void Apply(
+        bool enabled,
+        int petCount,
+        string movementArea,
+        bool sleepModeEnabled,
+        IReadOnlyCollection<string> selectedPetIds,
+        IReadOnlyCollection<string>? enabledAmbientAnimations,
+        bool roamingEnabled)
     {
         StopPets();
 
+        _sleepModeEnabled = sleepModeEnabled;
+
         IReadOnlyList<PetDefinition> definitions = _catalog.Load();
         AvailablePetNames = definitions.Select(definition => definition.DisplayName).ToArray();
+        AvailablePets = definitions
+            .Select(definition => new PetSelectionOption(definition.Id, definition.DisplayName))
+            .ToArray();
+        AvailableAmbientAnimations = definitions
+            .SelectMany(definition => definition.AmbientBehaviors)
+            .Select(behavior => behavior.Animation)
+            .Append("roam")
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(name => name.Equals("roam", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ThenBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .Select(name => new AnimationSelectionOption(
+                name,
+                char.ToUpperInvariant(name[0]) + name[1..]))
+            .ToArray();
+
+        Dictionary<string, PetDefinition> definitionsById = definitions
+            .ToDictionary(definition => definition.Id, StringComparer.OrdinalIgnoreCase);
+        PetDefinition[] selectedDefinitions = selectedPetIds.Count == 0
+            ? definitions.Take(Math.Clamp(petCount, 1, 5)).ToArray()
+            : selectedPetIds
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(5)
+                .Select(id => definitionsById.GetValueOrDefault(id))
+                .Where(definition => definition is not null)
+                .Cast<PetDefinition>()
+                .ToArray();
+        SelectedPetIds = selectedDefinitions.Select(definition => definition.Id).ToArray();
 
         if (!enabled)
         {
@@ -56,17 +106,33 @@ public sealed class DesktopPetManager : IDisposable
             return;
         }
 
+        if (enabled && selectedDefinitions.Length == 0)
+        {
+            LastError = "The selected pet characters are no longer available. Choose another pet.";
+            StateChanged?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
         try
         {
             PetMovementArea area = movementArea == "FullScreen"
                 ? PetMovementArea.FullScreen
                 : PetMovementArea.Taskbar;
 
-            int count = Math.Clamp(petCount, 1, 5);
+            int count = selectedDefinitions.Length;
             for (int index = 0; index < count; index++)
             {
-                PetDefinition definition = definitions[index % definitions.Count];
-                _pets.Add(new ConfiguredPetActor(definition, area, index, count));
+                PetDefinition definition = selectedDefinitions[index];
+                ConfiguredPetActor pet = new(
+                    definition,
+                    area,
+                    index,
+                    count,
+                    _messageProvider,
+                    enabledAmbientAnimations,
+                    roamingEnabled);
+                pet.SetSleepMode(_sleepModeEnabled);
+                _pets.Add(pet);
             }
 
             LastError = null;

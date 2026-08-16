@@ -12,6 +12,8 @@ public interface IPetActor : IDisposable
 
     void Update(double elapsedSeconds);
 
+    void SetSleepMode(bool enabled);
+
     Task HandleReminderAsync(ReminderContext reminder, CancellationToken cancellationToken = default);
 
     Task HandleClickAsync(CancellationToken cancellationToken = default);

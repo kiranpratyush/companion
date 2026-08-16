@@ -11,10 +11,40 @@ internal sealed class PetSpeechBubble : IDisposable
     private readonly NativeSpriteWindow _window = new();
     private LayeredSpriteFrame? _frame;
 
+    public bool IsVisible { get; private set; }
+
     public void Show(string title, string message, PetScreenBounds petBounds)
     {
         using Bitmap bitmap = DrawBubble(title, message);
         LayeredSpriteFrame nextFrame = new((Bitmap)bitmap.Clone());
+        (int x, int y) = GetPosition(petBounds);
+        _window.Render(nextFrame, x, y);
+        IsVisible = true;
+
+        LayeredSpriteFrame? previousFrame = _frame;
+        _frame = nextFrame;
+        previousFrame?.Dispose();
+    }
+
+    public void UpdatePosition(PetScreenBounds petBounds)
+    {
+        if (!IsVisible || _frame is null)
+        {
+            return;
+        }
+
+        (int x, int y) = GetPosition(petBounds);
+        _window.Render(_frame, x, y);
+    }
+
+    public void Hide()
+    {
+        _window.Hide();
+        IsVisible = false;
+    }
+
+    private static (int X, int Y) GetPosition(PetScreenBounds petBounds)
+    {
         DesktopBounds screen = DesktopGeometry.GetVirtualScreen();
 
         int x = petBounds.Left + ((petBounds.Width - BubbleWidth) / 2);
@@ -27,14 +57,8 @@ internal sealed class PetSpeechBubble : IDisposable
         }
 
         y = Math.Clamp(y, screen.Top + 8, screen.Bottom - BubbleHeight - 8);
-        _window.Render(nextFrame, x, y);
-
-        LayeredSpriteFrame? previousFrame = _frame;
-        _frame = nextFrame;
-        previousFrame?.Dispose();
+        return (x, y);
     }
-
-    public void Hide() => _window.Hide();
 
     private static Bitmap DrawBubble(string title, string message)
     {

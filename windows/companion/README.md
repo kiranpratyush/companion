@@ -1,25 +1,30 @@
 # Hello Companion
 
-Hello Companion is a lightweight Windows tray app with animated desktop pets that periodically say “Hello 👋” in an anchored speech bubble.
+Hello Companion is a lightweight Windows tray app with animated desktop pets that occasionally share friendly, activity-aware messages in an anchored speech bubble.
 
 ## First-version features
 
-- Notification-area icon with Open, Pause/Resume, Say hello now, and Exit commands
+- Notification-area icon with Open, Show/Hide pets, and Exit commands
 - Close-to-tray window behavior
-- Configurable interval from 1 minute to 24 hours
-- Persisted enabled state and interval
-- Next-greeting status
+- Local, randomized messages while pets roam
+- A sleepy message when a pet starts its sleep animation
+- Manual sleep mode where pets stop moving, sleep, and only show occasional gentle messages
 - Single instance per Windows session; launching again restores the existing window
-- Cancellable, idle-friendly scheduling that never emits a burst of missed greetings
 - x64 and ARM64 configurations
 - Multiple transparent desktop pets that roam along the taskbar or across the virtual screen
+- Character picker in settings and checked pet selections in the tray menu
+- Selectable behaviors including roaming, idle, sleep, and jump; roaming can be disabled to keep pets stationary
 - JSON-based custom characters with one or more PNG animation frames
+- Per-character dialogue for roaming, ambient sleep, and manual sleep mode
 - Independent per-pet reminder handlers and declarative behavior sequences
 - Speech bubbles anchored to the selected pet, with Windows notifications as a fallback when pets are hidden
 
 Settings are stored locally in `%LOCALAPPDATA%\HelloCompanion\settings.json`. The app has no account, analytics, or network behavior.
 
 Custom character packages are loaded from `%LOCALAPPDATA%\HelloCompanion\Pets`. See [docs/custom-pets.md](docs/custom-pets.md) for the manifest and sprite-frame format.
+
+For a guided explanation of the codebase, data flow, animation loop, native rendering,
+and the planned backend message boundary, see [docs/architecture.md](docs/architecture.md).
 
 ## Build
 

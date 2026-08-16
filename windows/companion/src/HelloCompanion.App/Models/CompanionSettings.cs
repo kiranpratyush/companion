@@ -14,7 +14,15 @@ public sealed record CompanionSettings
 
     public int DesktopPetCount { get; init; } = 2;
 
+    public string[] SelectedPetIds { get; init; } = [];
+
     public string DesktopPetMovementArea { get; init; } = "Taskbar";
+
+    public bool SleepModeEnabled { get; init; }
+
+    public string[]? EnabledAmbientAnimations { get; init; }
+
+    public bool RoamingEnabled { get; init; } = true;
 
     public CompanionSettings Normalize()
     {
@@ -25,6 +33,18 @@ public sealed record CompanionSettings
                 MinimumIntervalMinutes,
                 MaximumIntervalMinutes),
             DesktopPetCount = Math.Clamp(DesktopPetCount, 1, 5),
+            SelectedPetIds = (SelectedPetIds ?? [])
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Select(id => id.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(5)
+                .ToArray(),
+            EnabledAmbientAnimations = EnabledAmbientAnimations?
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Select(name => name.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(20)
+                .ToArray(),
             DesktopPetMovementArea = DesktopPetMovementArea is "Taskbar" or "FullScreen"
                 ? DesktopPetMovementArea
                 : "Taskbar"

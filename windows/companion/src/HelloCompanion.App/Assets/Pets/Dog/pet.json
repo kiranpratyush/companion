@@ -38,19 +38,48 @@
       "Animations/sleep/corgi_sleep_07.png",
       "Animations/sleep/corgi_sleep_08.png"
     ],
+    "jump": [
+      "Animations/jump/corgi_jump_01.png",
+      "Animations/jump/corgi_jump_02.png",
+      "Animations/jump/corgi_jump_03.png",
+      "Animations/jump/corgi_jump_04.png",
+      "Animations/jump/corgi_jump_05.png",
+      "Animations/jump/corgi_jump_06.png",
+      "Animations/jump/corgi_jump_07.png",
+      "Animations/jump/corgi_jump_08.png"
+    ],
     "reminder": ["Animations/sleep/corgi_sleep_01.png"]
   },
   "animationFrameDurations": {
     "roam": 90,
     "idle": 180,
     "sleep": 180,
+    "jump": 120,
     "reminder": 500
   },
-  "nonLoopingAnimations": ["idle", "sleep", "reminder"],
+  "nonLoopingAnimations": ["idle", "sleep", "jump", "reminder"],
   "ambientBehaviors": [
     { "animation": "idle", "weight": 3, "minimumSeconds": 2.5, "maximumSeconds": 5 },
-    { "animation": "sleep", "weight": 1, "minimumSeconds": 6, "maximumSeconds": 10 }
+    { "animation": "sleep", "weight": 1, "minimumSeconds": 6, "maximumSeconds": 10 },
+    { "animation": "jump", "weight": 2, "minimumSeconds": 1, "maximumSeconds": 1.3 }
   ],
+  "messages": {
+    "roam": [
+      "Adventure time!",
+      "I'm right here if you need me.",
+      "You are doing pawsome!",
+      "Should we take a little walk?"
+    ],
+    "sleep": [
+      "All that running made me sleepy.",
+      "Just one small nap..."
+    ],
+    "sleep-mode": [
+      "I'll guard this spot while I nap.",
+      "Time to recharge my zoomies.",
+      "I'll be resting right here."
+    ]
+  },
   "reminderBehavior": [
     { "action": "stop" },
     { "action": "play", "animation": "reminder" },

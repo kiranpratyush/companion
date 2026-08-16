@@ -39,19 +39,48 @@
       "Animations/sleep/cat_sleep_07.png",
       "Animations/sleep/cat_sleep_08.png"
     ],
+    "jump": [
+      "Animations/jump/cat_jump_01.png",
+      "Animations/jump/cat_jump_02.png",
+      "Animations/jump/cat_jump_03.png",
+      "Animations/jump/cat_jump_04.png",
+      "Animations/jump/cat_jump_05.png",
+      "Animations/jump/cat_jump_06.png",
+      "Animations/jump/cat_jump_07.png",
+      "Animations/jump/cat_jump_08.png"
+    ],
     "reminder": ["Animations/sleep/cat_sleep_02.png"]
   },
   "animationFrameDurations": {
     "roam": 90,
     "idle": 160,
     "sleep": 180,
+    "jump": 120,
     "reminder": 500
   },
-  "nonLoopingAnimations": ["idle", "sleep", "reminder"],
+  "nonLoopingAnimations": ["idle", "sleep", "jump", "reminder"],
   "ambientBehaviors": [
     { "animation": "idle", "weight": 3, "minimumSeconds": 2.5, "maximumSeconds": 5 },
-    { "animation": "sleep", "weight": 1, "minimumSeconds": 6, "maximumSeconds": 10 }
+    { "animation": "sleep", "weight": 1, "minimumSeconds": 6, "maximumSeconds": 10 },
+    { "animation": "jump", "weight": 2, "minimumSeconds": 1, "maximumSeconds": 1.3 }
   ],
+  "messages": {
+    "roam": [
+      "I'm on patrol.",
+      "Did something move over there?",
+      "You're doing purr-fectly!",
+      "Time for a tiny stretch."
+    ],
+    "sleep": [
+      "This looks like a good nap spot.",
+      "My paws need a little rest."
+    ],
+    "sleep-mode": [
+      "I'll curl up right here.",
+      "Wake me when you need me.",
+      "Quiet paws, cozy thoughts."
+    ]
+  },
   "reminderBehavior": [
     { "action": "stop" },
     { "action": "play", "animation": "reminder" },

@@ -10,14 +10,13 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <StackPanel Spacing="6">
                 <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Hello Companion" />
                 <TextBlock
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Text="A small, friendly hello while you work."
+                    Text="Friendly desktop pets that keep you company while you work."
                     TextWrapping="Wrap" />
             </StackPanel>
 
@@ -28,11 +27,7 @@
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="1"
                 CornerRadius="8">
-                <Grid ColumnSpacing="16">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+                <Grid>
                     <StackPanel Spacing="4">
                         <TextBlock FontSize="20" FontWeight="SemiBold" Text="{x:Bind StatusTitle, Mode=OneWay}" />
                         <TextBlock
@@ -40,48 +35,11 @@
                             Text="{x:Bind StatusDetail, Mode=OneWay}"
                             TextWrapping="Wrap" />
                     </StackPanel>
-                    <Button Grid.Column="1" Click="SayHelloNow_Click" Content="Say hello now" />
                 </Grid>
             </Border>
 
-            <StackPanel Grid.Row="2" Spacing="16">
-                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Greeting schedule" />
-                <ToggleSwitch
-                    x:Name="GreetingsToggle"
-                    Header="Scheduled greetings"
-                    OffContent="Paused"
-                    OnContent="Enabled" />
-
-                <Grid ColumnSpacing="12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="180" />
-                    </Grid.ColumnDefinitions>
-                    <NumberBox
-                        x:Name="IntervalNumberBox"
-                        Header="Every"
-                        Maximum="1440"
-                        Minimum="1"
-                        SmallChange="1"
-                        SpinButtonPlacementMode="Compact" />
-                    <ComboBox
-                        x:Name="IntervalUnitComboBox"
-                        Grid.Column="1"
-                        Header="Unit"
-                        SelectedIndex="0">
-                        <ComboBoxItem Content="Minutes" Tag="Minutes" />
-                        <ComboBoxItem Content="Hours" Tag="Hours" />
-                    </ComboBox>
-                </Grid>
-
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                    <Button Click="Save_Click" Content="Save changes" Style="{StaticResource AccentButtonStyle}" />
-                    <Button Click="PauseResume_Click" Content="{x:Bind PauseResumeLabel, Mode=OneWay}" />
-                </StackPanel>
-            </StackPanel>
-
             <Border
-                Grid.Row="3"
+                Grid.Row="2"
                 Padding="20"
                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -102,42 +60,64 @@
                         OffContent="Hidden"
                         OnContent="Visible" />
 
-                    <Grid ColumnSpacing="12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="220" />
-                        </Grid.ColumnDefinitions>
-                        <NumberBox
-                            x:Name="PetCountNumberBox"
-                            Header="Number of pets"
-                            Maximum="5"
-                            Minimum="1"
-                            SmallChange="1"
-                            SpinButtonPlacementMode="Compact" />
-                        <ComboBox
-                            x:Name="PetMovementAreaComboBox"
-                            Grid.Column="1"
-                            Header="Movement area"
-                            SelectedIndex="0">
-                            <ComboBoxItem Content="Along the taskbar" Tag="Taskbar" />
-                            <ComboBoxItem Content="Across the full screen" Tag="FullScreen" />
-                        </ComboBox>
-                    </Grid>
+                    <TextBlock FontWeight="SemiBold" Text="Choose pets" />
+                    <ListView
+                        x:Name="AvailablePetsList"
+                        DisplayMemberPath="DisplayName"
+                        MaxHeight="220"
+                        SelectionMode="Multiple" />
+
+                    <StackPanel Spacing="4">
+                        <TextBlock FontWeight="SemiBold" Text="Allowed behaviors" />
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="Clear Roam to keep pets in place. Idle, sleep, and jump can still play while stationary."
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ListView
+                        x:Name="AvailableAnimationsList"
+                        DisplayMemberPath="DisplayName"
+                        MaxHeight="180"
+                        SelectionMode="Multiple" />
+
+                    <ComboBox
+                        x:Name="PetMovementAreaComboBox"
+                        Header="Movement area"
+                        SelectedIndex="0">
+                        <ComboBoxItem Content="Along the taskbar" Tag="Taskbar" />
+                        <ComboBoxItem Content="Across the full screen" Tag="FullScreen" />
+                    </ComboBox>
 
                     <TextBlock
                         x:Name="LoadedPetsText"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         TextWrapping="Wrap" />
 
+                    <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                    <StackPanel Spacing="4">
+                        <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Sleep mode" />
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="Pause movement and let the pets sleep, with only occasional gentle messages."
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <ToggleSwitch
+                        x:Name="SleepModeToggle"
+                        Header="Put pets to sleep"
+                        OffContent="Disabled"
+                        OnContent="Enabled" />
+
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Click="SavePets_Click" Content="Apply pets" Style="{StaticResource AccentButtonStyle}" />
+                        <Button Click="SavePets_Click" Content="Apply settings" Style="{StaticResource AccentButtonStyle}" />
                         <Button Click="OpenPetsFolder_Click" Content="Open custom pets folder" />
                         <Button Click="ReloadPets_Click" Content="Reload characters" />
                     </StackPanel>
                 </StackPanel>
             </Border>
 
-            <StackPanel Grid.Row="4" Spacing="12">
+            <StackPanel Grid.Row="3" Spacing="12">
                 <InfoBar
                     x:Name="StatusInfoBar"
                     IsClosable="False"

@@ -14,6 +14,10 @@ internal abstract class PetActorBase : IPetActor
     private readonly SemaphoreSlim _behaviorGate = new(1, 1);
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly Random _random;
+    private readonly IPetMessageProvider _messageProvider;
+    private readonly PetAmbientBehavior[] _ambientBehaviors;
+    private readonly bool _roamingEnabled;
+    private readonly string _restingAnimation;
     private double _x;
     private double _y;
     private double _velocityX;
@@ -22,15 +26,22 @@ internal abstract class PetActorBase : IPetActor
     private string _currentAnimation = "roam";
     private bool _movementPaused;
     private bool _ambientBehaviorActive;
+    private bool _sleepMode;
     private double _ambientCountdownSeconds;
     private double _ambientDurationSeconds;
+    private double _messageCountdownSeconds;
+    private double _messageVisibleSeconds;
+    private string? _lastAmbientAnimation;
     private bool _disposed;
 
     protected PetActorBase(
         PetDefinition definition,
         PetMovementArea movementArea,
         int index,
-        int totalCount)
+        int totalCount,
+        IPetMessageProvider messageProvider,
+        IReadOnlyCollection<string>? enabledAmbientAnimations,
+        bool roamingEnabled)
     {
         _definition = definition;
         _movementArea = movementArea;
@@ -38,7 +49,18 @@ internal abstract class PetActorBase : IPetActor
         _taskbar = DesktopGeometry.GetTaskbarPlacement(_virtualScreen);
         _animations = LoadAnimations(definition);
         _random = new Random(HashCode.Combine(definition.Id, index, Environment.TickCount));
+        _messageProvider = messageProvider;
+        _roamingEnabled = roamingEnabled;
+        _restingAnimation = definition.Animations.ContainsKey("idle") ? "idle" : "roam";
+        _ambientBehaviors = enabledAmbientAnimations is null
+            ? definition.AmbientBehaviors
+            : definition.AmbientBehaviors
+                .Where(behavior => enabledAmbientAnimations.Contains(
+                    behavior.Animation,
+                    StringComparer.OrdinalIgnoreCase))
+                .ToArray();
         ResetAmbientCountdown();
+        ResetMessageCountdown();
         bool acceptsClicks = definition.ClickBehavior.Length > 0;
         _window = new NativeSpriteWindow(acceptsClicks);
         if (acceptsClicks)
@@ -61,6 +83,12 @@ internal abstract class PetActorBase : IPetActor
             InitializeTaskbarPosition(fraction);
         }
 
+        if (!_roamingEnabled)
+        {
+            _movementPaused = true;
+            PlayAnimation(_restingAnimation);
+        }
+
         Render();
     }
 
@@ -72,7 +100,7 @@ internal abstract class PetActorBase : IPetActor
 
     private async void Window_Clicked(object? sender, EventArgs e)
     {
-        if (_disposed || IsBusy)
+        if (_disposed || IsBusy || _sleepMode)
         {
             return;
         }
@@ -94,9 +122,21 @@ internal abstract class PetActorBase : IPetActor
             return;
         }
 
+        if (_sleepMode)
+        {
+            _movementPaused = true;
+            _ambientBehaviorActive = false;
+            PlayAnimation("sleep");
+            _animationTime += elapsedSeconds;
+            UpdateSleepModeMessage(elapsedSeconds);
+            Render();
+            return;
+        }
+
         if (!IsBusy)
         {
             UpdateAmbientBehavior(elapsedSeconds);
+            UpdateAmbientMessage(elapsedSeconds);
         }
 
         _animationTime += elapsedSeconds;
@@ -125,11 +165,37 @@ internal abstract class PetActorBase : IPetActor
 
     public void Pause() => _movementPaused = true;
 
+    public void SetSleepMode(bool enabled)
+    {
+        if (_sleepMode == enabled)
+        {
+            return;
+        }
+
+        _sleepMode = enabled;
+        _speechBubble.Hide();
+        _messageVisibleSeconds = 0;
+
+        if (enabled)
+        {
+            _ambientBehaviorActive = false;
+            _movementPaused = true;
+            PlayAnimation("sleep");
+            ShowAmbientMessage("sleep-mode", 4);
+            _messageCountdownSeconds = RandomBetween(45, 90);
+        }
+        else
+        {
+            Resume();
+            ResetMessageCountdown();
+        }
+    }
+
     public void Resume()
     {
         _ambientBehaviorActive = false;
-        _movementPaused = false;
-        PlayAnimation("roam");
+        _movementPaused = !_roamingEnabled;
+        PlayAnimation(_roamingEnabled ? "roam" : _restingAnimation);
         ResetAmbientCountdown();
     }
 
@@ -209,7 +275,7 @@ internal abstract class PetActorBase : IPetActor
 
     private void UpdateAmbientBehavior(double elapsedSeconds)
     {
-        if (_definition.AmbientBehaviors.Length == 0)
+        if (_ambientBehaviors.Length == 0)
         {
             return;
         }
@@ -236,26 +302,129 @@ internal abstract class PetActorBase : IPetActor
         _ambientDurationSeconds = RandomBetween(behavior.MinimumSeconds, behavior.MaximumSeconds);
         _movementPaused = true;
         PlayAnimation(behavior.Animation);
+
+        if (string.Equals(behavior.Animation, "sleep", StringComparison.OrdinalIgnoreCase))
+        {
+            ShowAmbientMessage("sleep", 4.5);
+        }
+    }
+
+    private void UpdateAmbientMessage(double elapsedSeconds)
+    {
+        if (_messageVisibleSeconds > 0)
+        {
+            _messageVisibleSeconds -= elapsedSeconds;
+            if (_messageVisibleSeconds <= 0)
+            {
+                _speechBubble.Hide();
+            }
+        }
+
+        if (_ambientBehaviorActive || _messageVisibleSeconds > 0)
+        {
+            return;
+        }
+
+        _messageCountdownSeconds -= elapsedSeconds;
+        if (_messageCountdownSeconds <= 0)
+        {
+            ShowAmbientMessage("roam", 4);
+            ResetMessageCountdown();
+        }
+    }
+
+    private void UpdateSleepModeMessage(double elapsedSeconds)
+    {
+        if (_messageVisibleSeconds > 0)
+        {
+            _messageVisibleSeconds -= elapsedSeconds;
+            if (_messageVisibleSeconds <= 0)
+            {
+                _speechBubble.Hide();
+            }
+
+            return;
+        }
+
+        _messageCountdownSeconds -= elapsedSeconds;
+        if (_messageCountdownSeconds <= 0)
+        {
+            ShowAmbientMessage("sleep-mode", 4);
+            _messageCountdownSeconds = RandomBetween(45, 90);
+        }
+    }
+
+    private void ShowAmbientMessage(string activity, double visibleSeconds)
+    {
+        IReadOnlyList<string> characterMessages = GetCharacterMessages(activity);
+        string? message = _messageProvider.GetMessage(
+            new PetMessageRequest(Id, DisplayName, activity, characterMessages),
+            _random);
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return;
+        }
+
+        _speechBubble.Show(
+            DisplayName,
+            message,
+            new PetScreenBounds(
+                (int)Math.Round(_x),
+                (int)Math.Round(_y),
+                _definition.SpriteWidth,
+                _definition.SpriteHeight));
+        _messageVisibleSeconds = visibleSeconds;
+    }
+
+    private IReadOnlyList<string> GetCharacterMessages(string activity)
+    {
+        if (_definition.Messages.TryGetValue(activity, out string[]? messages))
+        {
+            return messages;
+        }
+
+        if (string.Equals(activity, "sleep-mode", StringComparison.OrdinalIgnoreCase) &&
+            _definition.Messages.TryGetValue("sleep", out messages))
+        {
+            return messages;
+        }
+
+        return Array.Empty<string>();
     }
 
     private PetAmbientBehavior ChooseAmbientBehavior()
     {
-        double totalWeight = _definition.AmbientBehaviors.Sum(behavior => behavior.Weight);
+        PetAmbientBehavior[] candidates = _ambientBehaviors.Length > 1
+            ? _ambientBehaviors
+                .Where(behavior => !string.Equals(
+                    behavior.Animation,
+                    _lastAmbientAnimation,
+                    StringComparison.OrdinalIgnoreCase))
+                .ToArray()
+            : _ambientBehaviors;
+
+        double totalWeight = candidates.Sum(behavior => behavior.Weight);
         double choice = _random.NextDouble() * totalWeight;
-        foreach (PetAmbientBehavior behavior in _definition.AmbientBehaviors)
+        foreach (PetAmbientBehavior behavior in candidates)
         {
             choice -= behavior.Weight;
             if (choice <= 0)
             {
+                _lastAmbientAnimation = behavior.Animation;
                 return behavior;
             }
         }
 
-        return _definition.AmbientBehaviors[^1];
+        PetAmbientBehavior fallback = candidates[^1];
+        _lastAmbientAnimation = fallback.Animation;
+        return fallback;
     }
 
     private void ResetAmbientCountdown()
         => _ambientCountdownSeconds = RandomBetween(7, 15);
+
+    private void ResetMessageCountdown()
+        => _messageCountdownSeconds = RandomBetween(25, 50);
 
     private double RandomBetween(double minimum, double maximum)
         => minimum + (_random.NextDouble() * (maximum - minimum));
@@ -347,6 +516,11 @@ internal abstract class PetActorBase : IPetActor
             ? elapsedFrame % frames.Length
             : Math.Min(elapsedFrame, frames.Length - 1);
         _window.Render(frames[frameIndex], (int)Math.Round(_x), (int)Math.Round(_y));
+        _speechBubble.UpdatePosition(new PetScreenBounds(
+            (int)Math.Round(_x),
+            (int)Math.Round(_y),
+            _definition.SpriteWidth,
+            _definition.SpriteHeight));
     }
 
     private static Dictionary<string, AnimationClip> LoadAnimations(PetDefinition definition)
@@ -452,8 +626,18 @@ internal sealed class ConfiguredPetActor : PetActorBase
         PetDefinition definition,
         PetMovementArea movementArea,
         int index,
-        int totalCount)
-        : base(definition, movementArea, index, totalCount)
+        int totalCount,
+        IPetMessageProvider messageProvider,
+        IReadOnlyCollection<string>? enabledAmbientAnimations,
+        bool roamingEnabled)
+        : base(
+            definition,
+            movementArea,
+            index,
+            totalCount,
+            messageProvider,
+            enabledAmbientAnimations,
+            roamingEnabled)
     {
     }
 

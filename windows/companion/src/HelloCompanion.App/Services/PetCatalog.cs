@@ -70,6 +70,27 @@ public sealed class PetCatalog
                     }
                 }
 
+                Dictionary<string, string[]> messages = new(StringComparer.OrdinalIgnoreCase);
+                foreach ((string activity, string[]? lines) in source?.Messages ?? new())
+                {
+                    if (string.IsNullOrWhiteSpace(activity) || lines is null)
+                    {
+                        continue;
+                    }
+
+                    string[] normalizedLines = lines
+                        .Where(line => !string.IsNullOrWhiteSpace(line))
+                        .Select(line => line.Trim())
+                        .Where(line => line.Length <= 240)
+                        .Distinct(StringComparer.Ordinal)
+                        .Take(30)
+                        .ToArray();
+                    if (normalizedLines.Length > 0 && messages.Count < 20)
+                    {
+                        messages[activity.Trim()] = normalizedLines;
+                    }
+                }
+
                 PetAmbientBehavior[] ambientBehaviors = source?.AmbientBehaviors ?? [];
                 PetBehaviorAction[] reminderBehavior = source?.ReminderBehavior ?? [];
                 PetBehaviorAction[] clickBehavior = source?.ClickBehavior ?? [];
@@ -115,6 +136,7 @@ public sealed class PetCatalog
                     Frames = baseFrames,
                     Animations = new Dictionary<string, string[]>(animations, StringComparer.OrdinalIgnoreCase),
                     AnimationFrameDurations = normalizedFrameDurations,
+                    Messages = messages,
                     NonLoopingAnimations = (source.NonLoopingAnimations ?? [])
                         .Where(name => !string.IsNullOrWhiteSpace(name) && availableAnimations.Contains(name))
                         .Select(name => name.Trim())

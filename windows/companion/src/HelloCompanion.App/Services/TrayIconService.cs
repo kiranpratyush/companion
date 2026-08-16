@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using HelloCompanion.App.Models;
 
 namespace HelloCompanion.App.Services;
 
@@ -17,24 +18,27 @@ public sealed class TrayIconService : IDisposable
     private const uint NimDelete = 0x00000002;
     private const uint MfString = 0x00000000;
     private const uint MfSeparator = 0x00000800;
+    private const uint MfChecked = 0x00000008;
+    private const uint MfGrayed = 0x00000001;
     private const uint TpmRightButton = 0x0002;
     private const uint TpmReturnCommand = 0x0100;
     private const uint ImageIcon = 1;
     private const uint LoadResourceShared = 0x00008000;
     private const int DefaultApplicationIcon = 32512;
     private const uint OpenCommand = 1001;
-    private const uint TogglePauseCommand = 1002;
-    private const uint GreetNowCommand = 1003;
     private const uint ExitCommand = 1004;
     private const uint TogglePetsCommand = 1005;
+    private const uint FirstPetCommand = 2000;
 
     private static readonly Dictionary<IntPtr, TrayIconService> Instances = [];
     private static readonly WindowProcedureDelegateType WindowProcedureDelegate = WindowProcedure;
     private static readonly string WindowClassName = $"HelloCompanion.Tray.{Environment.ProcessId}";
 
     private readonly IntPtr _windowHandle;
-    private bool _isPaused;
     private bool _petsVisible;
+    private IReadOnlyList<PetSelectionOption> _availablePets = [];
+    private HashSet<string> _selectedPetIds = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<uint, string> _petCommands = [];
     private bool _disposed;
 
     public TrayIconService()
@@ -71,13 +75,19 @@ public sealed class TrayIconService : IDisposable
     }
 
     public event EventHandler? OpenRequested;
-    public event EventHandler? TogglePauseRequested;
-    public event EventHandler? GreetNowRequested;
     public event EventHandler? TogglePetsRequested;
     public event EventHandler? ExitRequested;
+    public event Action<string>? PetSelectionRequested;
 
-    public void SetPaused(bool isPaused) => _isPaused = isPaused;
     public void SetPetsVisible(bool petsVisible) => _petsVisible = petsVisible;
+
+    public void SetPetSelections(
+        IReadOnlyList<PetSelectionOption> availablePets,
+        IEnumerable<string> selectedPetIds)
+    {
+        _availablePets = availablePets.ToArray();
+        _selectedPetIds = new HashSet<string>(selectedPetIds, StringComparer.OrdinalIgnoreCase);
+    }
 
     private NotifyIconData CreateIconData()
     {
@@ -109,9 +119,20 @@ public sealed class TrayIconService : IDisposable
         try
         {
             AppendMenu(menu, MfString, OpenCommand, "Open Hello Companion");
-            AppendMenu(menu, MfString, TogglePauseCommand, _isPaused ? "Resume greetings" : "Pause greetings");
-            AppendMenu(menu, MfString, GreetNowCommand, "Say hello now");
             AppendMenu(menu, MfString, TogglePetsCommand, _petsVisible ? "Hide desktop pets" : "Show desktop pets");
+            AppendMenu(menu, MfSeparator, 0, null);
+            AppendMenu(menu, MfString | MfGrayed, 0, "Choose pets");
+
+            _petCommands.Clear();
+            for (int index = 0; index < _availablePets.Count; index++)
+            {
+                PetSelectionOption pet = _availablePets[index];
+                uint commandId = FirstPetCommand + (uint)index;
+                uint flags = MfString | (_selectedPetIds.Contains(pet.Id) ? MfChecked : 0);
+                AppendMenu(menu, flags, commandId, pet.DisplayName);
+                _petCommands[commandId] = pet.Id;
+            }
+
             AppendMenu(menu, MfSeparator, 0, null);
             AppendMenu(menu, MfString, ExitCommand, "Exit");
 
@@ -124,10 +145,14 @@ public sealed class TrayIconService : IDisposable
             switch (command)
             {
                 case OpenCommand: OpenRequested?.Invoke(this, EventArgs.Empty); break;
-                case TogglePauseCommand: TogglePauseRequested?.Invoke(this, EventArgs.Empty); break;
-                case GreetNowCommand: GreetNowRequested?.Invoke(this, EventArgs.Empty); break;
                 case TogglePetsCommand: TogglePetsRequested?.Invoke(this, EventArgs.Empty); break;
                 case ExitCommand: ExitRequested?.Invoke(this, EventArgs.Empty); break;
+                default:
+                    if (_petCommands.TryGetValue(command, out string? petId))
+                    {
+                        PetSelectionRequested?.Invoke(petId);
+                    }
+                    break;
             }
         }
         finally

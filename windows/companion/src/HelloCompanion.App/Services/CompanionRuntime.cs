@@ -6,8 +6,6 @@ namespace HelloCompanion.App.Services;
 public sealed class CompanionRuntime : IDisposable
 {
     private readonly SettingsService _settingsService;
-    private readonly GreetingNotificationService _notificationService;
-    private readonly GreetingScheduler _scheduler;
     private readonly DesktopPetManager _petManager;
     private CompanionSettings _settings = new();
     private string? _lastError;
@@ -15,63 +13,101 @@ public sealed class CompanionRuntime : IDisposable
 
     public CompanionRuntime(
         SettingsService settingsService,
-        GreetingNotificationService notificationService,
         DesktopPetManager petManager)
     {
         _settingsService = settingsService;
-        _notificationService = notificationService;
-        _scheduler = new GreetingScheduler(ScheduledGreetingAsync);
         _petManager = petManager;
-        _scheduler.StateChanged += OnSchedulerStateChanged;
         _petManager.StateChanged += OnPetManagerStateChanged;
     }
 
     public event EventHandler? StateChanged;
     public CompanionSettings Settings => _settings;
-    public DateTimeOffset? NextGreetingAt => _scheduler.NextGreetingAt;
     public string? LastError => _lastError ?? _petManager.LastError;
     public string CustomPetsDirectory => _petManager.CustomPetsDirectory;
+    public bool IsSleepModeEnabled => _petManager.IsSleepModeEnabled;
     public string AvailablePetsSummary => _petManager.AvailablePetNames.Count == 0
         ? "No characters loaded"
         : string.Join(", ", _petManager.AvailablePetNames);
+    public IReadOnlyList<PetSelectionOption> AvailablePets => _petManager.AvailablePets;
+    public IReadOnlyList<string> SelectedPetIds => _settings.SelectedPetIds;
+    public IReadOnlyList<AnimationSelectionOption> AvailableAmbientAnimations
+        => _petManager.AvailableAmbientAnimations;
 
     public async Task InitializeAsync()
     {
         _settings = await _settingsService.LoadAsync();
-        ApplyToScheduler();
         ApplyToPetManager();
-    }
 
-    public async Task ApplyAsync(bool enabled, int intervalMinutes)
-    {
-        _settings = (_settings with
+        if (_settings.SelectedPetIds.Length == 0 && _petManager.SelectedPetIds.Count > 0)
         {
-            GreetingsEnabled = enabled,
-            GreetingIntervalMinutes = intervalMinutes
-        }).Normalize();
-
-        await SaveSettingsAsync();
-
-        ApplyToScheduler();
+            _settings = _settings with { SelectedPetIds = _petManager.SelectedPetIds.ToArray() };
+            await SaveSettingsAsync();
+        }
     }
 
-    public async Task ApplyPetsAsync(bool enabled, int petCount, string movementArea)
+    public async Task ApplyPetsAsync(
+        bool enabled,
+        int petCount,
+        string movementArea,
+        bool sleepModeEnabled,
+        IReadOnlyCollection<string> selectedPetIds,
+        IReadOnlyCollection<string>? enabledAmbientAnimations,
+        bool roamingEnabled)
     {
         _settings = (_settings with
         {
             DesktopPetsEnabled = enabled,
             DesktopPetCount = petCount,
-            DesktopPetMovementArea = movementArea
+            DesktopPetMovementArea = movementArea,
+            SleepModeEnabled = sleepModeEnabled,
+            SelectedPetIds = selectedPetIds.ToArray(),
+            EnabledAmbientAnimations = enabledAmbientAnimations?.ToArray(),
+            RoamingEnabled = roamingEnabled
         }).Normalize();
 
         await SaveSettingsAsync();
         ApplyToPetManager();
     }
 
-    public Task TogglePetsAsync() => ApplyPetsAsync(
-        !_settings.DesktopPetsEnabled,
-        _settings.DesktopPetCount,
-        _settings.DesktopPetMovementArea);
+    public Task TogglePetsAsync()
+    {
+        IReadOnlyCollection<string> selectedPetIds = _settings.SelectedPetIds.Length > 0
+            ? _settings.SelectedPetIds
+            : _petManager.SelectedPetIds;
+        return ApplyPetsAsync(
+            !_settings.DesktopPetsEnabled,
+            _settings.DesktopPetCount,
+            _settings.DesktopPetMovementArea,
+            _settings.SleepModeEnabled,
+            selectedPetIds,
+            _settings.EnabledAmbientAnimations,
+            _settings.RoamingEnabled);
+    }
+
+    public async Task TogglePetSelectionAsync(string petId)
+    {
+        HashSet<string> selected = new(_settings.SelectedPetIds, StringComparer.OrdinalIgnoreCase);
+        if (!selected.Remove(petId))
+        {
+            if (selected.Count >= 5)
+            {
+                _lastError = "You can show up to five pets at once.";
+                StateChanged?.Invoke(this, EventArgs.Empty);
+                return;
+            }
+
+            selected.Add(petId);
+        }
+
+        await ApplyPetsAsync(
+            selected.Count > 0,
+            _settings.DesktopPetCount,
+            _settings.DesktopPetMovementArea,
+            _settings.SleepModeEnabled,
+            selected,
+            _settings.EnabledAmbientAnimations,
+            _settings.RoamingEnabled);
+    }
 
     public void ReloadPets() => ApplyToPetManager();
 
@@ -84,22 +120,6 @@ public sealed class CompanionRuntime : IDisposable
         });
     }
 
-    public Task TogglePauseAsync() => ApplyAsync(!_settings.GreetingsEnabled, _settings.GreetingIntervalMinutes);
-
-    public async Task SayHelloNowAsync()
-    {
-        try
-        {
-            await DeliverGreetingAsync();
-            _lastError = null;
-        }
-        catch
-        {
-            _lastError = "Windows could not show the greeting. Check the app's notification settings.";
-        }
-
-        StateChanged?.Invoke(this, EventArgs.Empty);
-    }
 
     public void ReportTrayUnavailable()
     {
@@ -107,39 +127,14 @@ public sealed class CompanionRuntime : IDisposable
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    private async Task ScheduledGreetingAsync()
-    {
-        try
-        {
-            await DeliverGreetingAsync();
-            _lastError = null;
-        }
-        catch
-        {
-            _lastError = "Windows could not show the scheduled greeting. Check the app's notification settings.";
-            StateChanged?.Invoke(this, EventArgs.Empty);
-        }
-    }
-
-    private async Task DeliverGreetingAsync()
-    {
-        ReminderContext reminder = new(
-            "Hello Companion",
-            "Hello 👋",
-            TimeSpan.FromSeconds(5));
-
-        bool handledByPet = await _petManager.HandleReminderAsync(reminder);
-        if (!handledByPet)
-        {
-            await _notificationService.ShowGreetingAsync();
-        }
-    }
-
-    private void ApplyToScheduler() => _scheduler.Apply(_settings.GreetingsEnabled, TimeSpan.FromMinutes(_settings.GreetingIntervalMinutes));
     private void ApplyToPetManager() => _petManager.Apply(
         _settings.DesktopPetsEnabled,
         _settings.DesktopPetCount,
-        _settings.DesktopPetMovementArea);
+        _settings.DesktopPetMovementArea,
+        _settings.SleepModeEnabled,
+        _settings.SelectedPetIds,
+        _settings.EnabledAmbientAnimations,
+        _settings.RoamingEnabled);
 
     private async Task SaveSettingsAsync()
     {
@@ -154,16 +149,13 @@ public sealed class CompanionRuntime : IDisposable
         }
     }
 
-    private void OnSchedulerStateChanged(object? sender, EventArgs e) => StateChanged?.Invoke(this, EventArgs.Empty);
     private void OnPetManagerStateChanged(object? sender, EventArgs e) => StateChanged?.Invoke(this, EventArgs.Empty);
 
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
-        _scheduler.StateChanged -= OnSchedulerStateChanged;
         _petManager.StateChanged -= OnPetManagerStateChanged;
-        _scheduler.Dispose();
         _petManager.Dispose();
     }
 }

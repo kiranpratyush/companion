@@ -20,7 +20,7 @@ public partial class App : Application
     {
         PetCatalog petCatalog = new();
         DesktopPetManager petManager = new(petCatalog, DispatcherQueue.GetForCurrentThread());
-        _runtime = new CompanionRuntime(new SettingsService(), new GreetingNotificationService(), petManager);
+        _runtime = new CompanionRuntime(new SettingsService(), petManager);
         await _runtime.InitializeAsync();
         _window = new MainWindow(_runtime);
         _window.Activate();
@@ -28,12 +28,11 @@ public partial class App : Application
         try
         {
             _trayIcon = new TrayIconService();
-            _trayIcon.SetPaused(!_runtime.Settings.GreetingsEnabled);
             _trayIcon.SetPetsVisible(_runtime.Settings.DesktopPetsEnabled);
+            _trayIcon.SetPetSelections(_runtime.AvailablePets, _runtime.SelectedPetIds);
             _trayIcon.OpenRequested += (_, _) => ShowMainWindow();
-            _trayIcon.TogglePauseRequested += async (_, _) => await TogglePauseAsync();
-            _trayIcon.GreetNowRequested += async (_, _) => await _runtime.SayHelloNowAsync();
             _trayIcon.TogglePetsRequested += async (_, _) => await _runtime.TogglePetsAsync();
+            _trayIcon.PetSelectionRequested += async petId => await _runtime.TogglePetSelectionAsync(petId);
             _trayIcon.ExitRequested += (_, _) => ExitApplication();
             _window.CloseToTrayEnabled = true;
         }
@@ -48,19 +47,14 @@ public partial class App : Application
 
     public void ShowMainWindow() => _window?.ShowAndActivate();
 
-    private async Task TogglePauseAsync()
-    {
-        if (_runtime is not null) await _runtime.TogglePauseAsync();
-    }
-
     private void OnRuntimeStateChanged(object? sender, EventArgs e)
     {
         _window?.DispatcherQueue.TryEnqueue(() =>
         {
             if (_runtime is not null)
             {
-                _trayIcon?.SetPaused(!_runtime.Settings.GreetingsEnabled);
                 _trayIcon?.SetPetsVisible(_runtime.Settings.DesktopPetsEnabled);
+                _trayIcon?.SetPetSelections(_runtime.AvailablePets, _runtime.SelectedPetIds);
             }
         });
     }

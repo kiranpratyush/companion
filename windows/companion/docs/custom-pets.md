@@ -32,18 +32,34 @@ Pets
     "roam": ["walk-01.png", "walk-02.png", "walk-03.png"],
     "idle": ["idle-01.png", "idle-02.png"],
     "sleep": ["sleep-01.png", "sleep-02.png"],
+    "jump": ["jump-01.png", "jump-02.png", "jump-03.png"],
     "reminder": ["look-up.png", "talk.png"]
   },
   "animationFrameDurations": {
     "roam": 120,
     "idle": 400,
     "sleep": 700,
+    "jump": 100,
     "reminder": 250
   },
+  "nonLoopingAnimations": ["idle", "sleep", "jump", "reminder"],
   "ambientBehaviors": [
     { "animation": "idle", "weight": 3, "minimumSeconds": 2, "maximumSeconds": 5 },
-    { "animation": "sleep", "weight": 1, "minimumSeconds": 6, "maximumSeconds": 10 }
+    { "animation": "sleep", "weight": 1, "minimumSeconds": 6, "maximumSeconds": 10 },
+    { "animation": "jump", "weight": 2, "minimumSeconds": 0.8, "maximumSeconds": 1.2 }
   ],
+  "messages": {
+    "roam": [
+      "I'm exploring!",
+      "You are doing great!"
+    ],
+    "sleep": [
+      "I am feeling sleepy..."
+    ],
+    "sleep-mode": [
+      "I'll rest here until you wake me."
+    ]
+  },
   "reminderBehavior": [
     { "action": "stop" },
     { "action": "play", "animation": "reminder" },
@@ -65,7 +81,7 @@ Pets
 }
 ```
 
-After copying the files, select **Reload characters**. Hello Companion cycles through all loaded characters when more than one pet is visible. A custom character with the same `id` as a built-in character overrides it.
+After copying the files, select **Reload characters**, then select the character in the app or from the checked entries in the tray menu. A custom character with the same `id` as a built-in character overrides it.
 
 ## Asset guidance
 
@@ -78,9 +94,14 @@ After copying the files, select **Reload characters**. Hello Companion cycles th
 - List transition animations in `nonLoopingAnimations` when they should play once and hold their final frame until the behavior ends.
 - Set `pixelArt` to `true` for small pixel sprites that must be enlarged with crisp nearest-neighbor scaling.
 - `ambientBehaviors` is per-pet: it lists the animations that character may choose while roaming, their relative weights, and how long each state lasts. This lets one character sleep while another character uses entirely different state names.
-- Dimensions are clamped to 32–512 px, speed to 10–500 px/s, and pet count to five.
+- The settings screen builds its **Allowed behaviors** list from these behaviors and the required `roam` clip. Clearing an ambient animation excludes it from random selection. Clearing **Roam** stops screen movement and leaves the pet in its idle pose between ambient actions. Manual sleep mode may still use `sleep` as an override.
+- `messages` gives the character its own dialogue. Use `roam` for periodic movement messages, `sleep` when an ambient sleep begins, and `sleep-mode` while the manual sleep toggle is enabled. If `sleep-mode` is omitted, the engine uses the character's `sleep` lines. If a category is absent, built-in fallback messages are used.
+- Each message is limited to 240 characters. Empty lines are removed, duplicates are ignored, and at most 30 messages per category are loaded.
+- Dimensions are clamped to 32–512 px, speed to 10–500 px/s, and at most five characters can be selected.
 
 Manifest frame paths cannot escape their character folder. Invalid characters are skipped without preventing other pets from loading.
+
+After editing `messages`, select **Reload characters** in the app. Message keys are case-insensitive.
 
 ## Per-pet behavior
 
@@ -88,4 +109,4 @@ Every visible character is an independent pet actor. A reminder is offered to on
 
 A character becomes directly clickable only when its manifest declares a non-empty `clickBehavior`. Pets without it remain fully click-through. Click behaviors support the safe `stop`, `play`, `wait`, and `resume` actions; a busy pet ignores additional clicks until its current action finishes.
 
-The engine currently supports independently timed frame animations, per-character ambient states, horizontal facing, taskbar roaming, full-screen bouncing, multiple pets, anchored speech bubbles, and click-through overlays. Character-specific mechanics such as jumping, swinging, playing, and interacting with windows will be added as trusted behavior primitives later.
+The engine currently supports independently timed frame animations, selectable per-character ambient states including jump sequences, horizontal facing, taskbar roaming, full-screen bouncing, multiple pets, anchored speech bubbles, and click-through overlays. Physics-based jumping, swinging, playing, and interacting with windows can be added as trusted behavior primitives later.

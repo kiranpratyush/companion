@@ -14,6 +14,8 @@ public sealed class PetDefinition
 
     public Dictionary<string, int> AnimationFrameDurations { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 
+    public Dictionary<string, string[]> Messages { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+
     public string[] NonLoopingAnimations { get; init; } = [];
 
     public PetAmbientBehavior[] AmbientBehaviors { get; init; } = [];
